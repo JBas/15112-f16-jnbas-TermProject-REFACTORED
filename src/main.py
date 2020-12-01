@@ -1,7 +1,4 @@
-#import scipy.signal
-#import numpy as np
-#import wave
-#import pyaudio
+import audio
 import pyglet
 
 WIDTH = 600
