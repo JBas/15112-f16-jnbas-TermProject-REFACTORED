@@ -1,11 +1,10 @@
+import time
 import scipy.signal
 import numpy as np
 import wave
 import pyaudio
 
 import matplotlib.pyplot as plt
-
-import struct
 
 class Audio():
 
@@ -16,38 +15,51 @@ class Audio():
 
     p = pyaudio.PyAudio()
 
-    def record():
+    def record(seconds):
         stream = Audio.p.open(Audio.RATE,
                               Audio.CHANNELS,
                               Audio.FORMAT,
                               input=True,
                               frames_per_buffer=Audio.CHUNK)
 
-        frames = []
-        for i in range(Audio.RATE//Audio.CHUNK * 5):
-            frames.append(stream.read(Audio.CHUNK))
+        buffers = []
+        for i in range(Audio.RATE//Audio.CHUNK * seconds):
+            buffers.append(stream.read(Audio.CHUNK))
         stream.stop_stream()
         stream.close()
-        return frames
+        return b''.join(buffers)
 
-    def display():
-        frames = Audio.record()
-#        obj = wave.open('sound.wav','wb')
-#        obj.setnchannels(Audio.CHANNELS)
-#        obj.setsampwidth(Audio.p.get_sample_size(Audio.FORMAT))
-#        obj.setframerate(Audio.RATE)
-#        obj.writeframes(b''.join(frames))
-#        obj.close()
+    def callback_record():
 
-        time = np.asarray(range(Audio.RATE//Audio.CHUNK * 5))
+        def callback(in_data, frame_count, time_info, status):
 
-        # @TODO: trouble parsing data
-        amplitude = np.asarray(struct.unpack("{}h".format(Audio.CHUNK*2*len(frames)),
-                                b''.join(frames)))
+            return (None, pyaudio.paContinue)
+
+        stream = Audio.p.open(Audio.RATE,
+                              Audio.CHANNELS,
+                              Audio.FORMAT,
+                              input=True,
+                              frames_per_buffer=Audio.CHUNK,
+                              stream_callback=callback)
+
+        stream.start_stream()
+        while stream.is_active():
+            pass
+        stream.stop_stream()
+        stream.close()
+        return
+
+    def display(seconds):
+        buffers = Audio.record(seconds)
+
+        time = np.asarray(range(Audio.RATE//Audio.CHUNK * seconds))
+
+        # channel are interleaved and not separable (?)
+        # so can't really show interesting data with multiple channels
+        amplitude = np.fromstring(buffers, dtype=np.int16)
         fig, ax = plt.subplots()
-        ax.plot(time, amplitude)
+        ax.plot(amplitude)
         plt.show()
-
         return
 
     def close():
